@@ -1,12 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for
 import folium
+from folium.plugins import HeatMap
 import requests
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
+import math
 
 app = Flask(__name__)
-
-load_dotenv()  # .env dosyasını yükle
+load_dotenv()
+HERE_API_KEY = os.getenv("HERE_API_KEY")  # .env dosyasından API anahtarını al
 
 def geocode(address):
     url = 'https://nominatim.openstreetmap.org/search'
@@ -16,8 +18,7 @@ def geocode(address):
     if response.ok and response.json():
         data = response.json()[0]
         return float(data['lat']), float(data['lon'])
-    else:
-        return None, None
+    return None, None
 
 def get_route_osrm(start_lon, start_lat, end_lon, end_lat):
     url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
@@ -27,11 +28,28 @@ def get_route_osrm(start_lon, start_lat, end_lon, end_lat):
         return response.json()
     return None
 
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000  # Dünya yarıçapı metre cinsinden
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(d_phi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def is_point_near_route(point_lat, point_lon, route_coords, threshold=100):
+    # Rota üzerindeki tüm noktalara mesafeyi ölç, eğer bir tanesi threshold'dan küçükse True döner
+    for r_lat, r_lon in route_coords:
+        if haversine(point_lat, point_lon, r_lat, r_lon) <= threshold:
+            return True
+    return False
+
 @app.route('/')
 def index():
-    m = folium.Map(location=[41.025, 29.016], zoom_start=13, tiles='OpenStreetMap')
-    map_html = m._repr_html_()
-    return render_template('index.html', map=map_html, start='', end='')
+    m = folium.Map(location=[41.015137, 28.979530], zoom_start=12)
+    return render_template('index.html', map=m._repr_html_(), start='', end='')
 
 @app.route('/generate_route', methods=['POST'])
 def generate_route():
@@ -41,68 +59,56 @@ def generate_route():
     start_lat, start_lon = geocode(start)
     end_lat, end_lon = geocode(end)
 
-    m = None
+    if not all([start_lat, start_lon, end_lat, end_lon]):
+        return redirect(url_for('index'))
 
-    if all([start_lat, start_lon, end_lat, end_lon]):
-        route_data = get_route_osrm(start_lon, start_lat, end_lon, end_lat)
-        if route_data and route_data.get('routes'):
-            coords = route_data['routes'][0]['geometry']['coordinates']
-            route_latlon = [(lat, lon) for lon, lat in coords]
+    route_data = get_route_osrm(start_lon, start_lat, end_lon, end_lat)
 
-            lats = [pt[0] for pt in route_latlon]
-            lons = [pt[1] for pt in route_latlon]
-            bounds = [[min(lats), min(lons)], [max(lats), max(lons)]]
+    m = folium.Map(tiles='OpenStreetMap')
 
-            m = folium.Map(tiles='OpenStreetMap')
-            m.fit_bounds(bounds)
+    if route_data and route_data.get('routes'):
+        coords = route_data['routes'][0]['geometry']['coordinates']
+        route_latlon = [(lat, lon) for lon, lat in coords]
 
-            folium.Marker(
-                location=[start_lat, start_lon],
-                popup=f'Başlangıç: {start}',
-                icon=folium.Icon(color='green', icon='play')
-            ).add_to(m)
+        # Harita boyutunu rotaya göre ayarla
+        lats = [pt[0] for pt in route_latlon]
+        lons = [pt[1] for pt in route_latlon]
+        bounds = [[min(lats), min(lons)], [max(lats), max(lons)]]
+        m.fit_bounds(bounds)
 
-            folium.Marker(
-                location=[end_lat, end_lon],
-                popup=f'Bitiş: {end}',
-                icon=folium.Icon(color='red', icon='stop')
-            ).add_to(m)
+        # Rota üzerindeki noktaları çiz
+        folium.PolyLine(route_latlon, color='blue', weight=5).add_to(m)
+        folium.Marker([start_lat, start_lon], popup='Başlangıç', icon=folium.Icon(color='green')).add_to(m)
+        folium.Marker([end_lat, end_lon], popup='Bitiş', icon=folium.Icon(color='red')).add_to(m)
 
-            folium.PolyLine(
-                locations=route_latlon,
-                color='blue',
-                weight=5,
-                opacity=0.8
-            ).add_to(m)
+        # HERE API'den trafik verisi al
+        bbox = f"{min(lons)},{min(lats)},{max(lons)},{max(lats)}"
+        traffic_url = f"https://data.traffic.hereapi.com/v7/flow?in=bbox:{bbox}&locationReferencing=shape&apiKey={HERE_API_KEY}"
+        response = requests.get(traffic_url)
+        traffic_data = response.json()
 
-    if m is None:
-        center = [41.025, 29.016]
-        zoom = 13
-        if all([start_lat, start_lon, end_lat, end_lon]):
-            center = [(start_lat + end_lat) / 2, (start_lon + end_lon) / 2]
-        elif start_lat and start_lon:
-            center = [start_lat, start_lon]
-        elif end_lat and end_lon:
-            center = [end_lat, end_lon]
+        heatmap_data = []
+        if 'results' in traffic_data:
+            for result in traffic_data['results']:
+                shape = result.get('location', {}).get('shape', {}).get('links', [])
+                for link in shape:
+                    density = link.get('trafficDensity', 1.0)
+                    for point in link.get('points', []):
+                        heatmap_data.append((point['lat'], point['lng'], density))
 
-        m = folium.Map(location=center, zoom_start=zoom, tiles='OpenStreetMap')
+        # Rota çevresi filtreleme (100m eşik)
+        threshold_meters = 100
+        filtered_heatmap_data = []
+        for lat, lon, density in heatmap_data:
+            if is_point_near_route(lat, lon, route_latlon, threshold=threshold_meters):
+                filtered_heatmap_data.append((lat, lon, density))
 
-        if start_lat and start_lon:
-            folium.Marker(
-                location=[start_lat, start_lon],
-                popup=f'Başlangıç: {start}',
-                icon=folium.Icon(color='green', icon='play')
-            ).add_to(m)
+        if filtered_heatmap_data:
+            max_density = max([d[2] for d in filtered_heatmap_data])
+            normalized_data = [(lat, lon, dens / max_density) for lat, lon, dens in filtered_heatmap_data]
+            HeatMap(normalized_data, radius=10, blur=15).add_to(m)
 
-        if end_lat and end_lon:
-            folium.Marker(
-                location=[end_lat, end_lon],
-                popup=f'Bitiş: {end}',
-                icon=folium.Icon(color='red', icon='stop')
-            ).add_to(m)
-
-    map_html = m._repr_html_()
-    return render_template('index.html', map=map_html, start=start, end=end)
+    return render_template('index.html', map=m._repr_html_(), start=start, end=end)
 
 @app.route('/reset')
 def reset():
