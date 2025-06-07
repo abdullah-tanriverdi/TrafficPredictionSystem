@@ -11,7 +11,6 @@ HERE_API_KEY = os.getenv("HERE_API_KEY")
 
 def geocode(input_str):
     try:
-        # Eğer doğrudan koordinatsa (örnek: "41.0,29.0")
         if ',' in input_str:
             lat, lon = map(float, input_str.split(','))
             return lat, lon
@@ -43,18 +42,16 @@ def generate_route():
     if not all([start_lat, start_lon, end_lat, end_lon]):
         return redirect(url_for('index'))
 
-    # Haritayı merkezle
     center_lat = (start_lat + end_lat) / 2
     center_lon = (start_lon + end_lon) / 2
     m = folium.Map(location=[center_lat, center_lon], zoom_start=13)
 
-    # Marker'lar
     folium.Marker([start_lat, start_lon], popup="Başlangıç", icon=folium.Icon(color='green')).add_to(m)
     folium.Marker([end_lat, end_lon], popup="Bitiş", icon=folium.Icon(color='red')).add_to(m)
 
-    # Trafik verisi al
+    # Trafik heatmap verisi al (HERE API'den)
     bbox = f"{min(start_lon, end_lon)},{min(start_lat, end_lat)},{max(start_lon, end_lon)},{max(start_lat, end_lat)}"
-    traffic_url = f"https://data.traffic.hereapi.com/v7/flow"
+    traffic_url = "https://data.traffic.hereapi.com/v7/flow"
     params = {
         "in": f"bbox:{bbox}",
         "locationReferencing": "shape",
@@ -63,7 +60,6 @@ def generate_route():
     response = requests.get(traffic_url, params=params)
     data = response.json()
 
-    # Heatmap verileri
     heatmap_data = []
     if "results" in data:
         for result in data["results"]:
@@ -75,6 +71,21 @@ def generate_route():
 
     if heatmap_data:
         HeatMap(heatmap_data, radius=25, blur=20, max_zoom=13).add_to(m)
+
+    # OSRM ile rota hesaplama
+    osrm_url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
+    osrm_params = {
+        "overview": "full",
+        "geometries": "geojson"
+    }
+    osrm_resp = requests.get(osrm_url, params=osrm_params)
+    if osrm_resp.ok:
+        route_data = osrm_resp.json()
+        if route_data.get("routes"):
+            geometry = route_data["routes"][0]["geometry"]
+            coords = geometry["coordinates"]  # [ [lon, lat], ...]
+            route_points = [(lat, lon) for lon, lat in coords]
+            folium.PolyLine(route_points, color="blue", weight=5, opacity=0.7).add_to(m)
 
     return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input)
 
