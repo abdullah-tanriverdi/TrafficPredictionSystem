@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8" />
-    <title>Traffic Prediction  System</title>
+    <title>Traffic Prediction System</title>
     <style>
         html, body {
             height: 100%;
@@ -50,6 +50,19 @@
         .search-container button:hover, .search-container a.button-reset:hover {
             background-color: #0d6efd;
         }
+        .error-message {
+            position: absolute;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffdddd;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 11;
+            color: #900;
+            font-weight: bold;
+            box-shadow: 0 0 6px rgba(255, 0, 0, 0.5);
+        }
     </style>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 </head>
@@ -58,12 +71,15 @@
         <form method="POST" action="/generate_route" style="display: flex; gap: 15px; align-items: center;">
             <input type="text" name="start" placeholder="Başlangıç noktası (isim veya 41.01,29.00)" value="{{ start }}" required />
             <input type="text" name="end" placeholder="Bitiş noktası (isim veya 41.05,29.10)" value="{{ end }}" required />
-            <button type="submit" title="Rotayı oluştur"><i class="fas fa-location-arrow"></i></button>
-            <a href="{{ url_for('reset') }}" class="button-reset" title="Sıfırla"><i class="fas fa-redo"></i></a>
+            <button type="submit" title="Rotayı Oluştur"><i class="fa-solid fa-route"></i></button>
         </form>
+        <a href="/reset" class="button-reset" title="Temizle"><i class="fa-solid fa-arrows-rotate"></i></a>
     </div>
-    <div id="map">
-        {{ map|safe }}
-    </div>
+
+    {% if error %}
+    <div class="error-message">{{ error }}</div>
+    {% endif %}
+
+    <div id="map">{{ map | safe }}</div>
 </body>
 </html>

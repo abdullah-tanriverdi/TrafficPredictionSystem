@@ -4,6 +4,8 @@ from folium.plugins import HeatMap
 import requests
 import os
 from dotenv import load_dotenv
+import networkx as nx
+from geopy.distance import geodesic
 
 app = Flask(__name__)
 load_dotenv()
@@ -23,13 +25,47 @@ def geocode(input_str):
                 data = response.json()[0]
                 return float(data['lat']), float(data['lon'])
     except:
-        return None, None
+        pass
     return None, None
+
+def build_weighted_graph(traffic_results, lat_min, lat_max, lon_min, lon_max):
+    G = nx.DiGraph()
+    for segment in traffic_results:
+        current_flow = segment.get("currentFlow", {})
+        jam_factor = current_flow.get("jamFactor", 1.0)
+        location = segment.get("location", {})
+        shape = location.get("shape", {})
+        links = shape.get("links", [])
+
+        for link in links:
+            points = link.get("points", [])
+            if len(points) < 2:
+                continue
+            filtered_points = [pt for pt in points if lat_min <= pt['lat'] <= lat_max and lon_min <= pt['lng'] <= lon_max]
+            if len(filtered_points) < 2:
+                continue
+            for i in range(len(filtered_points) - 1):
+                start = (filtered_points[i]['lat'], filtered_points[i]['lng'])
+                end = (filtered_points[i+1]['lat'], filtered_points[i+1]['lng'])
+                length_m = geodesic(start, end).meters
+                weight = length_m * jam_factor
+                G.add_edge(start, end, weight=weight, points=[filtered_points[i], filtered_points[i+1]])
+    return G
+
+def find_nearest_node(G, point, max_distance=500):
+    nearest = None
+    min_dist = float('inf')
+    for node in G.nodes:
+        dist = geodesic(node, point).meters
+        if dist < min_dist and dist <= max_distance:
+            min_dist = dist
+            nearest = node
+    return nearest
 
 @app.route('/')
 def index():
     m = folium.Map(location=[41.015, 28.9795], zoom_start=12)
-    return render_template('index.html', map=m._repr_html_(), start='', end='')
+    return render_template('index.html', map=m._repr_html_(), start='', end='', error=None)
 
 @app.route('/generate_route', methods=['POST'])
 def generate_route():
@@ -40,7 +76,8 @@ def generate_route():
     end_lat, end_lon = geocode(end_input)
 
     if not all([start_lat, start_lon, end_lat, end_lon]):
-        return redirect(url_for('index'))
+        error = "Geçerli başlangıç ve bitiş noktaları giriniz."
+        return render_template('index.html', map=None, start=start_input, end=end_input, error=error)
 
     center_lat = (start_lat + end_lat) / 2
     center_lon = (start_lon + end_lon) / 2
@@ -49,8 +86,25 @@ def generate_route():
     folium.Marker([start_lat, start_lon], popup="Başlangıç", icon=folium.Icon(color='green')).add_to(m)
     folium.Marker([end_lat, end_lon], popup="Bitiş", icon=folium.Icon(color='red')).add_to(m)
 
-    # Trafik heatmap verisi al (HERE API'den)
-    bbox = f"{min(start_lon, end_lon)},{min(start_lat, end_lat)},{max(start_lon, end_lon)},{max(start_lat, end_lat)}"
+    padding = 0.02  
+
+    points = [
+        (start_lat, start_lon),
+        ((2*start_lat + end_lat)/3, (2*start_lon + end_lon)/3),
+        ((start_lat + 2*end_lat)/3, (start_lon + 2*end_lon)/3),
+        (end_lat, end_lon)
+    ]
+
+    lats = [p[0] for p in points]
+    lons = [p[1] for p in points]
+
+    lat_min = min(lats) - padding
+    lat_max = max(lats) + padding
+    lon_min = min(lons) - padding
+    lon_max = max(lons) + padding
+
+    bbox = f"{lon_min},{lat_min},{lon_max},{lat_max}"
+
     traffic_url = "https://data.traffic.hereapi.com/v7/flow"
     params = {
         "in": f"bbox:{bbox}",
@@ -58,36 +112,63 @@ def generate_route():
         "apiKey": HERE_API_KEY
     }
     response = requests.get(traffic_url, params=params)
+    if not response.ok:
+        error = "Trafik verisi alınırken hata oluştu."
+        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=error)
+
     data = response.json()
+    traffic_data = data.get("results", [])
 
     heatmap_data = []
-    if "results" in data:
-        for result in data["results"]:
-            links = result.get("location", {}).get("shape", {}).get("links", [])
-            for link in links:
-                density = link.get("trafficDensity", 0.5)
-                for pt in link.get("points", []):
-                    heatmap_data.append([pt['lat'], pt['lng'], density])
+    for segment in traffic_data:
+        location = segment.get("location", {})
+        shape = location.get("shape", {})
+        links = shape.get("links", [])
+        current_flow = segment.get("currentFlow", {})
+        jam_factor = current_flow.get("jamFactor", 1.0)
+        for link in links:
+            points = link.get("points", [])
+            for pt in points:
+                
+                if lat_min <= pt['lat'] <= lat_max and lon_min <= pt['lng'] <= lon_max:
+                    heatmap_data.append([pt['lat'], pt['lng'], jam_factor])
 
     if heatmap_data:
         HeatMap(heatmap_data, radius=25, blur=20, max_zoom=14).add_to(m)
 
-    # OSRM ile rota hesaplama
-    osrm_url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
-    osrm_params = {
-        "overview": "full",
-        "geometries": "geojson"
-    }
-    osrm_resp = requests.get(osrm_url, params=osrm_params)
-    if osrm_resp.ok:
-        route_data = osrm_resp.json()
-        if route_data.get("routes"):
-            geometry = route_data["routes"][0]["geometry"]
-            coords = geometry["coordinates"]  # [ [lon, lat], ...]
-            route_points = [(lat, lon) for lon, lat in coords]
-            folium.PolyLine(route_points, color="blue", weight=5, opacity=0.7).add_to(m)
+    folium.Rectangle(
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+        color='red', fill=False, weight=2
+    ).add_to(m)
 
-    return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input)
+    
+    G = build_weighted_graph(traffic_data, lat_min, lat_max, lon_min, lon_max)
+
+    start_node = find_nearest_node(G, (start_lat, start_lon))
+    end_node = find_nearest_node(G, (end_lat, end_lon))
+
+    if not start_node or not end_node:
+        error = "Başlangıç veya bitiş noktasına yakın uygun yol bulunamadı."
+        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=error)
+
+    try:
+        path_nodes = nx.dijkstra_path(G, start_node, end_node, weight='weight')
+    except nx.NetworkXNoPath:
+        error = "Uygun rota bulunamadı."
+        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=error)
+
+    route_coords = []
+    for i in range(len(path_nodes) - 1):
+        edge_data = G.get_edge_data(path_nodes[i], path_nodes[i+1])
+        if edge_data and 'points' in edge_data:
+            route_coords.extend([(pt['lat'], pt['lng']) for pt in edge_data['points']])
+        else:
+            route_coords.append(path_nodes[i])
+    route_coords.append(path_nodes[-1])
+
+    folium.PolyLine(route_coords, color="blue", weight=5, opacity=0.7).add_to(m)
+
+    return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=None)
 
 @app.route('/reset')
 def reset():
