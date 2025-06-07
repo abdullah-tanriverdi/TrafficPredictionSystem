@@ -65,7 +65,8 @@ def find_nearest_node(G, point, max_distance=500):
 @app.route('/')
 def index():
     m = folium.Map(location=[41.015, 28.9795], zoom_start=12)
-    return render_template('index.html', map=m._repr_html_(), start='', end='', error=None)
+    return render_template('index.html', map=m._repr_html_(), start='', end='', error=None,
+                           start_lat=None, start_lon=None, end_lat=None, end_lon=None)
 
 @app.route('/generate_route', methods=['POST'])
 def generate_route():
@@ -77,7 +78,9 @@ def generate_route():
 
     if not all([start_lat, start_lon, end_lat, end_lon]):
         error = "Geçerli başlangıç ve bitiş noktaları giriniz."
-        return render_template('index.html', map=None, start=start_input, end=end_input, error=error)
+        return render_template('index.html', map=None, start=start_input, end=end_input,
+                               start_lat=None, start_lon=None, end_lat=None, end_lon=None,
+                               error=error)
 
     center_lat = (start_lat + end_lat) / 2
     center_lon = (start_lon + end_lon) / 2
@@ -114,7 +117,10 @@ def generate_route():
     response = requests.get(traffic_url, params=params)
     if not response.ok:
         error = "Trafik verisi alınırken hata oluştu."
-        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=error)
+        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
+                               start_lat=round(start_lat,6), start_lon=round(start_lon,6),
+                               end_lat=round(end_lat,6), end_lon=round(end_lon,6),
+                               error=error)
 
     data = response.json()
     traffic_data = data.get("results", [])
@@ -129,7 +135,6 @@ def generate_route():
         for link in links:
             points = link.get("points", [])
             for pt in points:
-                
                 if lat_min <= pt['lat'] <= lat_max and lon_min <= pt['lng'] <= lon_max:
                     heatmap_data.append([pt['lat'], pt['lng'], jam_factor])
 
@@ -141,7 +146,6 @@ def generate_route():
         color='red', fill=False, weight=2
     ).add_to(m)
 
-    
     G = build_weighted_graph(traffic_data, lat_min, lat_max, lon_min, lon_max)
 
     start_node = find_nearest_node(G, (start_lat, start_lon))
@@ -149,13 +153,19 @@ def generate_route():
 
     if not start_node or not end_node:
         error = "Başlangıç veya bitiş noktasına yakın uygun yol bulunamadı."
-        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=error)
+        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
+                               start_lat=round(start_lat,6), start_lon=round(start_lon,6),
+                               end_lat=round(end_lat,6), end_lon=round(end_lon,6),
+                               error=error)
 
     try:
         path_nodes = nx.dijkstra_path(G, start_node, end_node, weight='weight')
     except nx.NetworkXNoPath:
         error = "Uygun rota bulunamadı."
-        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=error)
+        return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
+                               start_lat=round(start_lat,6), start_lon=round(start_lon,6),
+                               end_lat=round(end_lat,6), end_lon=round(end_lon,6),
+                               error=error)
 
     route_coords = []
     for i in range(len(path_nodes) - 1):
@@ -168,7 +178,10 @@ def generate_route():
 
     folium.PolyLine(route_coords, color="blue", weight=5, opacity=0.7).add_to(m)
 
-    return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input, error=None)
+    return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
+                           start_lat=round(start_lat,6), start_lon=round(start_lon,6),
+                           end_lat=round(end_lat,6), end_lon=round(end_lon,6),
+                           error=None)
 
 @app.route('/reset')
 def reset():
