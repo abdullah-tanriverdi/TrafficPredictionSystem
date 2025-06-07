@@ -50,21 +50,16 @@
         .search-container button:hover, .search-container a.button-reset:hover {
             background-color: #0d6efd;
         }
-        .search-container button i, .search-container a.button-reset i {
-            font-size: 18px;
-        }
     </style>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 </head>
 <body>
     <div class="search-container">
         <form method="POST" action="/generate_route" style="display: flex; gap: 15px; align-items: center;">
-            <input type="text" name="start" placeholder="Başlangıç noktası..." value="{{ start }}" required />
-            <input type="text" name="end" placeholder="Bitiş noktası..." value="{{ end }}" required />
+            <input type="text" name="start" placeholder="Başlangıç noktası (isim veya 41.01,29.00)" value="{{ start }}" required />
+            <input type="text" name="end" placeholder="Bitiş noktası (isim veya 41.05,29.10)" value="{{ end }}" required />
             <button type="submit" title="Rotayı oluştur"><i class="fas fa-location-arrow"></i></button>
-            <a href="{{ url_for('reset') }}" class="button-reset" title="Haritayı sıfırla ve ana sayfaya dön">
-                <i class="fas fa-redo"></i>
-            </a>
+            <a href="{{ url_for('reset') }}" class="button-reset" title="Sıfırla"><i class="fas fa-redo"></i></a>
         </form>
     </div>
     <div id="map">
