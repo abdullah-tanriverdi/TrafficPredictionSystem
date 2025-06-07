@@ -70,7 +70,7 @@ def generate_route():
                     heatmap_data.append([pt['lat'], pt['lng'], density])
 
     if heatmap_data:
-        HeatMap(heatmap_data, radius=25, blur=20, max_zoom=13).add_to(m)
+        HeatMap(heatmap_data, radius=25, blur=20, max_zoom=14).add_to(m)
 
     # OSRM ile rota hesaplama
     osrm_url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
