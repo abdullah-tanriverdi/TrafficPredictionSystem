@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request
 import folium
 from folium.plugins import HeatMap
 import requests
@@ -66,7 +66,7 @@ def find_nearest_node(G, point, max_distance=500):
 def index():
     m = folium.Map(location=[41.015, 28.9795], zoom_start=12)
     return render_template('index.html', map=m._repr_html_(), start='', end='', error=None,
-                           start_lat=None, start_lon=None, end_lat=None, end_lon=None)
+                           start_coords=None, end_coords=None)
 
 @app.route('/generate_route', methods=['POST'])
 def generate_route():
@@ -79,7 +79,7 @@ def generate_route():
     if not all([start_lat, start_lon, end_lat, end_lon]):
         error = "Geçerli başlangıç ve bitiş noktaları giriniz."
         return render_template('index.html', map=None, start=start_input, end=end_input,
-                               start_lat=None, start_lon=None, end_lat=None, end_lon=None,
+                               start_coords=None, end_coords=None,
                                error=error)
 
     center_lat = (start_lat + end_lat) / 2
@@ -118,8 +118,8 @@ def generate_route():
     if not response.ok:
         error = "Trafik verisi alınırken hata oluştu."
         return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
-                               start_lat=round(start_lat,6), start_lon=round(start_lon,6),
-                               end_lat=round(end_lat,6), end_lon=round(end_lon,6),
+                               start_coords=(round(start_lat,6), round(start_lon,6)),
+                               end_coords=(round(end_lat,6), round(end_lon,6)),
                                error=error)
 
     data = response.json()
@@ -154,8 +154,8 @@ def generate_route():
     if not start_node or not end_node:
         error = "Başlangıç veya bitiş noktasına yakın uygun yol bulunamadı."
         return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
-                               start_lat=round(start_lat,6), start_lon=round(start_lon,6),
-                               end_lat=round(end_lat,6), end_lon=round(end_lon,6),
+                               start_coords=(round(start_lat,6), round(start_lon,6)),
+                               end_coords=(round(end_lat,6), round(end_lon,6)),
                                error=error)
 
     try:
@@ -163,8 +163,8 @@ def generate_route():
     except nx.NetworkXNoPath:
         error = "Uygun rota bulunamadı."
         return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
-                               start_lat=round(start_lat,6), start_lon=round(start_lon,6),
-                               end_lat=round(end_lat,6), end_lon=round(end_lon,6),
+                               start_coords=(round(start_lat,6), round(start_lon,6)),
+                               end_coords=(round(end_lat,6), round(end_lon,6)),
                                error=error)
 
     route_coords = []
@@ -178,14 +178,95 @@ def generate_route():
 
     folium.PolyLine(route_coords, color="blue", weight=5, opacity=0.7).add_to(m)
 
-    return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
-                           start_lat=round(start_lat,6), start_lon=round(start_lon,6),
-                           end_lat=round(end_lat,6), end_lon=round(end_lon,6),
-                           error=None)
+   
 
-@app.route('/reset')
-def reset():
-    return redirect(url_for('index'))
+    total_length_m = 0
+    total_time_h = 0
+    road_info = []
+
+    speeds = []
+    jam_factors = []
+
+  
+    turn_by_turn = []
+
+    for segment in traffic_data:
+        current_flow = segment.get("currentFlow", {})
+        jam_factor = current_flow.get("jamFactor", 1.0)
+        speed = current_flow.get("speed", None)
+        if speed is None:
+            speed = 30  
+        location = segment.get("location", {})
+        description = location.get("description", "Bilinmeyen Yol")
+
+        links = location.get("shape", {}).get("links", [])
+        for link in links:
+            points = link.get("points", [])
+            for i in range(len(points) - 1):
+                start_pt = (points[i]['lat'], points[i]['lng'])
+                end_pt = (points[i+1]['lat'], points[i+1]['lng'])
+                length_m = geodesic(start_pt, end_pt).meters
+                total_length_m += length_m
+                total_time_h += (length_m / 1000) / speed
+
+        road_info.append({
+            'name': description,
+            'jam_factor': jam_factor,
+            'speed': speed
+        })
+        speeds.append(speed)
+        jam_factors.append(jam_factor)
+
+    for i in range(1, len(route_coords)-1):
+        prev = route_coords[i-1]
+        curr = route_coords[i]
+        nxt = route_coords[i+1]
+
+        v1 = (curr[0]-prev[0], curr[1]-prev[1])
+        v2 = (nxt[0]-curr[0], nxt[1]-curr[1])
+
+       
+        import math
+        angle = math.degrees(
+            math.atan2(v2[1], v2[0]) - math.atan2(v1[1], v1[0])
+        )
+        if angle < -180:
+            angle += 360
+        elif angle > 180:
+            angle -= 360
+
+    
+        if angle > 30:
+            turn = "Sağa Dönüş"
+        elif angle < -30:
+            turn = "Sola Dönüş"
+        else:
+            turn = "Düz İlerle"
+
+        # Mesafe
+        dist_m = geodesic(prev, curr).meters
+        turn_by_turn.append({
+            'instruction': turn,
+            'distance': round(dist_m, 1),
+            'location': curr
+        })
+
+    average_speed = round(sum(speeds) / len(speeds), 2) if speeds else 0
+    average_jam = round(sum(jam_factors) / len(jam_factors), 2) if jam_factors else 0
+
+    total_length_km = round(total_length_m / 1000, 2)
+    total_time_min = round(total_time_h * 60, 1)
+
+    return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
+                           start_coords=(round(start_lat,6), round(start_lon,6)),
+                           end_coords=(round(end_lat,6), round(end_lon,6)),
+                           total_length_km=total_length_km,
+                           total_time_min=total_time_min,
+                           road_info=road_info,
+                           average_speed=average_speed,
+                           average_jam=average_jam,
+                           turn_by_turn=turn_by_turn,
+                           error=None)
 
 if __name__ == '__main__':
     app.run(debug=True)
