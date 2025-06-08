@@ -92,23 +92,48 @@
       flex-direction: column;
       gap: 22px;
     }
+    
+  
+    #right-panel {
+      position: fixed;
+      top: 70px;
+      right: 12px;
+      bottom: 12px;
+      width: 320px;
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+      border-radius: 16px;
+      padding: 28px 24px 30px 24px;
+      overflow-y: auto;
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #222;
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
 
    
-    #info-panel::-webkit-scrollbar {
+    #info-panel::-webkit-scrollbar,
+    #right-panel::-webkit-scrollbar {
       width: 9px;
     }
-    #info-panel::-webkit-scrollbar-track {
+    #info-panel::-webkit-scrollbar-track,
+    #right-panel::-webkit-scrollbar-track {
       background: #f1f1f1;
       border-radius: 16px;
     }
-    #info-panel::-webkit-scrollbar-thumb {
+    #info-panel::-webkit-scrollbar-thumb,
+    #right-panel::-webkit-scrollbar-thumb {
       background: #007bffcc;
       border-radius: 16px;
       border: 2px solid #f1f1f1;
     }
 
   
-    #info-panel h2 {
+    #info-panel h2,
+    #right-panel h2 {
       margin-top: 0;
       font-weight: 800;
       font-size: 1.4rem;
@@ -242,7 +267,7 @@
           <ul>
             {% for step in turn_by_turn if step.distance >= 10 %}
               <li>
-                <span>{{ step.instruction }}</span> - <span>{{ step.distance }} m</span>
+                <span>{{ step.instruction }}</span> - <span>{{ (step.distance / 1000) | round(2) }} km</span>
               </li>
             {% endfor %}
           </ul>
@@ -255,6 +280,47 @@
   </div>
 
   
+  <!-- Sağ panel: OSRM rotası -->
+  <div id="right-panel" role="region" aria-label="OSRM Rotası ve Bilgileri">
+    {% if error %}
+      <div id="error-msg" role="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if start_coords and end_coords %}
+      <div class="section">
+        <h2>📍 Konumlar</h2>
+        <div><span class="label">Başlangıç:</span> {{ start_coords[0] }}, {{ start_coords[1] }}</div>
+        <div><span class="label">Bitiş:</span> {{ end_coords[0] }}, {{ end_coords[1] }}</div>
+      </div>
+
+      <div class="section">
+        <h2>📊 OSRM Rota Bilgileri</h2>
+        <div><span class="label">Toplam Mesafe:</span> {{ osrm_total_length_km }} km</div>
+        <div><span class="label">Tahmini Süre:</span> {{ osrm_total_time_min }} dakika</div>
+        <div><span class="label">Ortalama Hız:</span> {{ osrm_average_speed }} km/h</div>
+      </div>
+
+      <div class="section">
+        <h2>🗺️ OSRM Adım Adım Rota</h2>
+        {% if osrm_directions %}
+          <ul>
+            {% for step in osrm_directions %}
+              <li>
+                <span>{{ step.instruction or step.text }}</span> - 
+                <span>{{ (step.distance / 1000) | round(2) }} km</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>OSRM rotası için yol tarifi bulunamadı.</p>
+        {% endif %}
+      </div>
+
+    {% else %}
+      <div>Henüz rota oluşturulmadı.</div>
+    {% endif %}
+  </div>
+
   <div id="map">
     {% if map %}
       {{ map|safe }}
