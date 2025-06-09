@@ -11,7 +11,16 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    m = folium.Map(location=[41.015, 28.9795], zoom_start=12)
+    m = folium.Map(location=[41.0603, 28.9870], zoom_start=14, tiles=None)
+
+    folium.TileLayer(
+    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr='Esri',
+    name='Esri World Imagery',
+    overlay=False,
+    control=False
+).add_to(m)
+    
     return render_template('index.html', map=m._repr_html_(), start='', end='', error=None,
                            start_coords=None, end_coords=None)
 
@@ -32,7 +41,15 @@ def generate_route():
 
     center_lat = (start_lat + end_lat) / 2
     center_lon = (start_lon + end_lon) / 2
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=13)
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=14)
+
+    folium.TileLayer(
+    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr='Esri',
+    name='Esri World Imagery',
+    overlay=False,
+    control=False
+).add_to(m)
 
     folium.Marker(
         [start_lat, start_lon],
@@ -104,7 +121,7 @@ def generate_route():
 
     osrm_route, osrm_directions, osrm_total_length_km, osrm_total_time_min, osrm_average_speed = get_osrm_route((start_lat, start_lon), (end_lat, end_lon))
     if osrm_route:
-        folium.PolyLine(osrm_route, color="#800080", weight=8, opacity=1, tooltip="OSRM Rotası", sticky=True).add_to(m)
+        folium.PolyLine(osrm_route, color="#FFFFFF", weight=8, opacity=1, tooltip="OSRM Rotası", sticky=True).add_to(m)
         street_names = extract_street_names(osrm_directions)
     else:
         osrm_directions = None
