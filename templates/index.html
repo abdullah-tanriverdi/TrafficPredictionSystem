@@ -280,46 +280,44 @@
   </div>
 
   
-  <!-- Sağ panel: OSRM rotası -->
-  <div id="right-panel" role="region" aria-label="OSRM Rotası ve Bilgileri">
-    {% if error %}
-      <div id="error-msg" role="alert">{{ error }}</div>
-    {% endif %}
+<div id="right-panel" role="region" aria-label="OSRM Rotası ve Bilgileri">
+  {% if error %}
+    <div id="error-msg" role="alert">{{ error }}</div>
+  {% endif %}
 
-    {% if start_coords and end_coords %}
-      <div class="section">
-        <h2>📍 Konumlar</h2>
-        <div><span class="label">Başlangıç:</span> {{ start_coords[0] }}, {{ start_coords[1] }}</div>
-        <div><span class="label">Bitiş:</span> {{ end_coords[0] }}, {{ end_coords[1] }}</div>
-      </div>
+  {% if start_coords and end_coords %}
+    <div class="section">
+      <h2>📍 Konumlar</h2>
+      <div><span class="label">Başlangıç:</span> {{ start_coords[0] }}, {{ start_coords[1] }}</div>
+      <div><span class="label">Bitiş:</span> {{ end_coords[0] }}, {{ end_coords[1] }}</div>
+    </div>
 
-      <div class="section">
-        <h2>📊 OSRM Rota Bilgileri</h2>
-        <div><span class="label">Toplam Mesafe:</span> {{ osrm_total_length_km }} km</div>
-        <div><span class="label">Tahmini Süre:</span> {{ osrm_total_time_min }} dakika</div>
-        <div><span class="label">Ortalama Hız:</span> {{ osrm_average_speed }} km/h</div>
-      </div>
+    <div class="section">
+      <h2>📊 OSRM Rota Bilgileri</h2>
+      <div><span class="label">Toplam Mesafe:</span> {{ osrm_total_length_km }} km</div>
+      <div><span class="label">Tahmini Süre:</span> {{ osrm_total_time_min }} dakika</div>
+      <div><span class="label">Ortalama Hız:</span> {{ osrm_average_speed }} km/h</div>
+    </div>
 
-      <div class="section">
-        <h2>🗺️ OSRM Adım Adım Rota</h2>
-        {% if osrm_directions %}
-          <ul>
-            {% for step in osrm_directions %}
-              <li>
-                <span>{{ step.instruction or step.text }}</span> - 
-                <span>{{ (step.distance / 1000) | round(2) }} km</span>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p>OSRM rotası için yol tarifi bulunamadı.</p>
-        {% endif %}
-      </div>
+    <div class="section">
+      <h2>🛣️ Geçilecek Yol İsimleri</h2>
+      {% if street_names %}
+        <ul>
+          {% for name in street_names %}
+            <li>{{ name }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Yol bilgisi bulunamadı.</p>
+      {% endif %}
+    </div>
 
-    {% else %}
-      <div>Henüz rota oluşturulmadı.</div>
-    {% endif %}
-  </div>
+  {% else %}
+    <div>Henüz rota oluşturulmadı.</div>
+  {% endif %}
+</div>
+
+
 
   <div id="map">
     {% if map %}

@@ -8,6 +8,7 @@ def calculate_route(G, start_node, end_node):
         path_nodes = nx.dijkstra_path(G, start_node, end_node, weight='weight')
     except nx.NetworkXNoPath:
         return None
+
     route_coords = []
     for i in range(len(path_nodes) - 1):
         edge_data = G.get_edge_data(path_nodes[i], path_nodes[i+1])
@@ -20,13 +21,13 @@ def calculate_route(G, start_node, end_node):
 
 def get_turn_by_turn(route_coords):
     turn_by_turn = []
-    for i in range(1, len(route_coords)-1):
+    for i in range(1, len(route_coords) - 1):
         prev = route_coords[i-1]
         curr = route_coords[i]
         nxt = route_coords[i+1]
 
-        v1 = (curr[0]-prev[0], curr[1]-prev[1])
-        v2 = (nxt[0]-curr[0], nxt[1]-curr[1])
+        v1 = (curr[0] - prev[0], curr[1] - prev[1])
+        v2 = (nxt[0] - curr[0], nxt[1] - curr[1])
 
         angle = math.degrees(
             math.atan2(v2[1], v2[0]) - math.atan2(v1[1], v1[0])
@@ -51,34 +52,53 @@ def get_turn_by_turn(route_coords):
         })
     return turn_by_turn
 
+
 def get_osrm_route(start, end):
     url = f"http://router.project-osrm.org/route/v1/driving/{start[1]},{start[0]};{end[1]},{end[0]}"
     params = {
         "overview": "full",
         "geometries": "geojson",
-        "steps": "true"  
+        "steps": "true"
     }
     response = requests.get(url, params=params)
-    if response.ok:
-        data = response.json()
-        if data.get("routes"):
-            route = data["routes"][0]["geometry"]["coordinates"]
-            steps = data["routes"][0]["legs"][0]["steps"]  
-            route_coords = [(lat, lon) for lon, lat in route]
+    if not response.ok:
+        return None, None, None, None, None
 
-           
-            directions = []
-            for step in steps:
-                maneuver = step.get("maneuver", {})
-                instruction = step.get("maneuver", {}).get("instruction", "")
-                if not instruction:
-                    instruction = step.get("name", "")
-                distance = step.get("distance", 0)
-                directions.append({
-                    "instruction": step.get("name", ""),
-                    "distance": round(distance, 1),
-                    "maneuver": maneuver.get("type", ""),
-                    "text": step.get("maneuver", {}).get("instruction", "")
-                })
-            return route_coords, directions
-    return None, None
+    data = response.json()
+    if not data.get("routes"):
+        return None, None, None, None, None
+
+    route_data = data["routes"][0]
+
+    route_coords = [(lat, lon) for lon, lat in route_data["geometry"]["coordinates"]]
+    total_distance_km = round(route_data["distance"] / 1000, 2)
+    total_duration_min = round(route_data["duration"] / 60, 1)
+    average_speed = round(total_distance_km / (total_duration_min / 60), 1) if total_duration_min > 0 else 0
+
+    directions = []
+    for leg in route_data.get("legs", []):
+        for step in leg.get("steps", []):
+            name = step.get("name", "").strip()
+            maneuver = step.get("maneuver", {})
+            if not name:
+                name = step.get("ref") or maneuver.get("type") or "Bilinmeyen yol"
+            directions.append({
+                "instruction": name,
+                "distance": step.get("distance", 0),
+                "duration": step.get("duration", 0),
+                "maneuver": maneuver.get("type", ""),
+                "location": maneuver.get("location", []),
+                "text": name
+            })
+
+    return route_coords, directions, total_distance_km, total_duration_min, average_speed
+
+def extract_street_names(osrm_directions):
+    street_names = []
+    seen = set()
+    for step in osrm_directions:
+        name = step.get("instruction") or step.get("text") or ""
+        if name and name not in seen:
+            street_names.append(name)
+            seen.add(name)
+    return street_names
