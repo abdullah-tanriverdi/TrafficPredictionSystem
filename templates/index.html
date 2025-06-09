@@ -73,140 +73,154 @@
     }
 
    
+    #info-panel, #right-panel {
+      position: fixed;
+      top: 70px;
+      bottom: 12px;
+      width: 320px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      border-radius: 20px;
+      padding: 28px 24px 30px 24px;
+      overflow-y: auto;
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #222;
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    #info-panel:hover, #right-panel:hover {
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
     #info-panel {
-      position: fixed;
-      top: 70px;
       left: 12px;
-      bottom: 12px;
-      width: 320px;
-      background: #fff;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.18);
-      border-radius: 16px;
-      padding: 28px 24px 30px 24px;
-      overflow-y: auto;
-      font-size: 1rem;
-      line-height: 1.5;
-      color: #222;
-      z-index: 900;
-      display: flex;
-      flex-direction: column;
-      gap: 22px;
     }
-    
-  
     #right-panel {
-      position: fixed;
-      top: 70px;
       right: 12px;
-      bottom: 12px;
-      width: 320px;
-      background: #fff;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.18);
-      border-radius: 16px;
-      padding: 28px 24px 30px 24px;
-      overflow-y: auto;
-      font-size: 1rem;
-      line-height: 1.5;
-      color: #222;
-      z-index: 900;
-      display: flex;
-      flex-direction: column;
-      gap: 22px;
     }
 
-   
-    #info-panel::-webkit-scrollbar,
-    #right-panel::-webkit-scrollbar {
-      width: 9px;
-    }
-    #info-panel::-webkit-scrollbar-track,
-    #right-panel::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 16px;
-    }
-    #info-panel::-webkit-scrollbar-thumb,
-    #right-panel::-webkit-scrollbar-thumb {
-      background: #007bffcc;
-      border-radius: 16px;
-      border: 2px solid #f1f1f1;
-    }
-
-  
     #info-panel h2,
     #right-panel h2 {
       margin-top: 0;
-      font-weight: 800;
-      font-size: 1.4rem;
+      font-weight: 900;
+      font-size: 1.5rem;
       color: #004085;
-      border-bottom: 2px solid #007bff88;
-      padding-bottom: 6px;
+      border-bottom: 3px solid #007bffcc;
+      padding-bottom: 8px;
       user-select: none;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.15);
     }
 
-  
     .section {
-      background: #f9fbff;
-      border-radius: 12px;
-      box-shadow: inset 0 0 6px #007bff22;
-      padding: 16px 18px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 16px;
+      box-shadow: inset 0 0 8px rgba(0, 123, 255, 0.15);
+      padding: 18px 22px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 14px;
+      color: #111;
+      user-select: text;
+      transition: background-color 0.25s ease;
+    }
+
+    .section:hover {
+      background: rgba(255, 255, 255, 0.35);
     }
 
     .label {
       font-weight: 700;
-      color: #0056b3;
+      color: #003366;
       user-select: text;
+      text-shadow: 0 1px 1px rgba(255,255,255,0.7);
     }
 
     ul {
-      padding-left: 1.3em;
+      padding-left: 1.5em;
       margin: 0;
       max-height: 180px;
       overflow-y: auto;
       list-style-type: disc;
+      color: #222;
     }
+
     ul li {
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       font-weight: 600;
       color: #222;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      user-select: text;
+      transition: color 0.2s ease;
     }
+
     ul li:last-child {
       margin-bottom: 0;
     }
 
-  
+    ul li:hover {
+      color: #007bff;
+      cursor: default;
+    }
+
     .traffic-low {
       color: #28a745;
       font-weight: 700;
+      text-shadow: 0 1px 1px rgba(255,255,255,0.8);
     }
     .traffic-medium {
       color: #ffc107;
       font-weight: 700;
+      text-shadow: 0 1px 1px rgba(255,255,255,0.8);
     }
     .traffic-high {
       color: #dc3545;
       font-weight: 700;
+      text-shadow: 0 1px 1px rgba(255,255,255,0.8);
     }
     .traffic-icon {
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       user-select: none;
+      text-shadow: 0 0 3px rgba(0,0,0,0.25);
     }
 
-  
     #error-msg {
       color: #dc3545;
       font-weight: 700;
-      background: #f8d7da;
-      border-radius: 10px;
-      padding: 12px 15px;
-      box-shadow: 0 0 12px #dc3545aa;
+      background: rgba(248, 215, 218, 0.8);
+      border-radius: 12px;
+      padding: 14px 18px;
+      box-shadow: 0 0 16px #dc3545cc;
       user-select: text;
+      text-align: center;
+      font-size: 1.1rem;
+      border: 1.5px solid #dc3545cc;
     }
+
+    .osrm-title {
+  font-weight: 800;
+  font-size: 1.6rem;
+  color: #0056b3; /* koyu mavi */
+  border-bottom: 3px solid #007bff; /* alt çizgi */
+  padding-bottom: 6px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+
   </style>
 </head>
 <body>
@@ -224,6 +238,8 @@
     {% endif %}
 
     {% if start_coords and end_coords %}
+
+    <h1 class="osrm-title">Akıllı Rota Detayları</h1>
       <div class="section">
         <h2>📍 Konumlar</h2>
         <div><span class="label">Başlangıç:</span> {{ start_coords[0] }}, {{ start_coords[1] }}</div>
@@ -279,26 +295,26 @@
     {% endif %}
   </div>
 
-  
 <div id="right-panel" role="region" aria-label="OSRM Rotası ve Bilgileri">
   {% if error %}
     <div id="error-msg" role="alert">{{ error }}</div>
   {% endif %}
 
   {% if start_coords and end_coords %}
-    <div class="section">
+    <h1 class="osrm-title">OSRM Rota Detayları</h1>
+
+    <div class="section location-section">
       <h2>📍 Konumlar</h2>
       <div><span class="label">Başlangıç:</span> {{ start_coords[0] }}, {{ start_coords[1] }}</div>
       <div><span class="label">Bitiş:</span> {{ end_coords[0] }}, {{ end_coords[1] }}</div>
     </div>
 
-
-    <div class="section">
+    <div class="section streets-section">
       <h2>🛣️ Geçilecek Yol İsimleri</h2>
       {% if street_names %}
         <ul>
           {% for name in street_names %}
-            <li>{{ name }}</li>
+            <li> {{ name }}</li>
           {% endfor %}
         </ul>
       {% else %}
@@ -306,11 +322,10 @@
       {% endif %}
     </div>
 
-        <div class="section">
+    <div class="section stats-section">
       <h2>📊 OSRM Rota Bilgileri</h2>
       <ul>
         <li><strong>Toplam Mesafe:</strong> {{ (osrm_total_length_km * 1000) | round(0) }} m</li>
-  
       </ul>
     </div>
 
@@ -318,7 +333,6 @@
     <div>Henüz rota oluşturulmadı.</div>
   {% endif %}
 </div>
-
 
 
   <div id="map">

@@ -16,6 +16,7 @@ def index():
                            start_coords=None, end_coords=None)
 
 @app.route('/generate_route', methods=['POST'])
+
 def generate_route():
     start_input = request.form['start']
     end_input = request.form['end']
@@ -33,8 +34,16 @@ def generate_route():
     center_lon = (start_lon + end_lon) / 2
     m = folium.Map(location=[center_lat, center_lon], zoom_start=13)
 
-    folium.Marker([start_lat, start_lon], popup="Başlangıç", icon=folium.Icon(color='green')).add_to(m)
-    folium.Marker([end_lat, end_lon], popup="Bitiş", icon=folium.Icon(color='red')).add_to(m)
+    folium.Marker(
+        [start_lat, start_lon],
+        popup="Başlangıç",
+         icon=folium.Icon(color='green', icon='play', prefix='fa')
+         ).add_to(m)
+    folium.Marker(
+        [end_lat, end_lon],
+        popup="Bitiş",
+        icon=folium.Icon(color='red', icon='stop', prefix='fa')
+        ).add_to(m)
 
     padding = 0.02  
     lats = [start_lat, end_lat]
@@ -95,7 +104,7 @@ def generate_route():
 
     osrm_route, osrm_directions, osrm_total_length_km, osrm_total_time_min, osrm_average_speed = get_osrm_route((start_lat, start_lon), (end_lat, end_lon))
     if osrm_route:
-        folium.PolyLine(osrm_route, color="red", weight=4, opacity=0.7, tooltip="OSRM Rotası").add_to(m)
+        folium.PolyLine(osrm_route, color="#800080", weight=8, opacity=1, tooltip="OSRM Rotası", sticky=True).add_to(m)
         street_names = extract_street_names(osrm_directions)
     else:
         osrm_directions = None
