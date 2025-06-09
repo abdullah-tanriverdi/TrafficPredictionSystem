@@ -292,12 +292,6 @@
       <div><span class="label">Bitiş:</span> {{ end_coords[0] }}, {{ end_coords[1] }}</div>
     </div>
 
-    <div class="section">
-      <h2>📊 OSRM Rota Bilgileri</h2>
-      <div><span class="label">Toplam Mesafe:</span> {{ osrm_total_length_km }} km</div>
-      <div><span class="label">Tahmini Süre:</span> {{ osrm_total_time_min }} dakika</div>
-      <div><span class="label">Ortalama Hız:</span> {{ osrm_average_speed }} km/h</div>
-    </div>
 
     <div class="section">
       <h2>🛣️ Geçilecek Yol İsimleri</h2>
@@ -310,6 +304,14 @@
       {% else %}
         <p>Yol bilgisi bulunamadı.</p>
       {% endif %}
+    </div>
+
+        <div class="section">
+      <h2>📊 OSRM Rota Bilgileri</h2>
+      <ul>
+        <li><strong>Toplam Mesafe:</strong> {{ (osrm_total_length_km * 1000) | round(0) }} m</li>
+  
+      </ul>
     </div>
 
   {% else %}
