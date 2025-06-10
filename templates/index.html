@@ -4,31 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rota ve Trafik Durumu</title>
-  <style>
+<style>
+html, body {
+  height: 100%;
+  margin: 0; padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  background: #e7eef6; /* açık gri-mavi */
+  color: #333; /* koyu gri metin */
+}
 
-    html, body {
-      height: 100%;
-      margin: 0; padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      overflow: hidden;
-      background: #f7f9fc;
-      color: #333;
-    }
-    #map {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 0;
-    }
-    
+#map {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 0;
+}
+
 #search-bar {
   position: fixed;
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.08); 
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85); /* neredeyse beyaz, saydamlık az */
   padding: 12px 28px;
   border-radius: 20px;
   display: flex;
@@ -36,13 +34,14 @@
   align-items: center;
   min-width: 360px;
   max-width: 640px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 2px solid #2f65d6; /* orta mavi sınır */
+  box-shadow: 0 6px 15px rgba(47, 101, 214, 0.25);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 #search-bar:hover {
-  border-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.3);
+  border-color: #1a3e72; /* koyu mavi */
+  box-shadow: 0 8px 22px rgba(26, 62, 114, 0.4);
 }
 
 #search-bar input[type="text"] {
@@ -50,25 +49,25 @@
   padding: 14px 20px;
   font-size: 1.1rem;
   border-radius: 14px;
-  border: 1.5px solid  	#00FFD1; 
+  border: 2px solid #2f65d6; /* orta mavi */
   outline: none;
-  background: rgba(255, 255, 255, 0.5); 
-  color: #111;
+  background: #fff;
+  color: #1a3e72; /* koyu mavi */
   font-weight: 600;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
 }
 
 #search-bar input[type="text"]::placeholder {
-  color: rgba(0, 0, 0, 0.45);
+  color: #aac4f6; /* açık mavi placeholder */
   font-weight: 400;
 }
 
 #search-bar input[type="text"]:focus {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: #00FFD1; 
-  box-shadow: 0 0 8px #00FFD1; 
-  color: #000;
+  background: #f0f5ff;
+  border-color: #1a3e72;
+  box-shadow: 0 0 8px #1a3e72;
+  color: #1a3e72;
 }
 
 #search-bar button {
@@ -76,192 +75,182 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: transparent;
-  border: 2px solid #00FFD1; 
+  background: #2f65d6;
+  border: none;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: none;
+  box-shadow: 0 4px 8px rgba(47, 101, 214, 0.4);
 }
 
 #search-bar button:hover {
-  background-color: #00FFD1; 
+  background-color: #1a3e72;
   transform: scale(1.1);
 }
 
-#search-bar button:hover svg {
-  stroke: #fff;
-}
-
-#search-bar button:active {
-  transform: scale(0.95);
-}
-
 #search-bar button svg {
-  stroke: #00FFD1; 
+  stroke: #fff;
   transition: stroke 0.3s ease;
 }
-   
-    #info-panel, #right-panel {
-      position: fixed;
-      top: 70px;
-      bottom: 12px;
-      width: 320px;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-      border-radius: 20px;
-      padding: 28px 24px 30px 24px;
-      overflow-y: auto;
-      font-size: 1rem;
-      line-height: 1.5;
-      color: #222;
-      z-index: 900;
-      display: flex;
-      flex-direction: column;
-      gap: 22px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      transition: box-shadow 0.3s ease, border-color 0.3s ease;
-      
-    }
 
-    #info-panel:hover, #right-panel:hover {
-      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
+#info-panel, #right-panel {
+  position: fixed;
+  top: 70px;
+  bottom: 12px;
+  width: 320px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 32px rgba(26, 62, 114, 0.25);
+  border-radius: 20px;
+  padding: 28px 24px 30px 24px;
+  overflow-y: auto;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #1a3e72; /* koyu mavi */
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  border: 1.5px solid #aac4f6; /* açık mavi sınır */
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
 
-    #info-panel {
-      left: 12px;
-    }
-    #right-panel {
-      right: 12px;
-    }
+#info-panel:hover, #right-panel:hover {
+  box-shadow: 0 18px 48px rgba(26, 62, 114, 0.4);
+  border-color: #1a3e72;
+}
 
-    #info-panel h2,
-    #right-panel h2 {
-      margin-top: 0;
-      font-weight: 900;
-      font-size: 1.5rem;
-      color: #004085;
-      border-bottom: 3px solid #007bffcc;
-      padding-bottom: 8px;
-      user-select: none;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.15);
-    }
+#info-panel {
+  left: 12px;
+}
 
-    .section {
-      background: rgba(255, 255, 255, 0.25);
-      border-radius: 16px;
-      box-shadow: inset 0 0 8px rgba(0, 123, 255, 0.15);
-      padding: 18px 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      color: #111;
-      user-select: text;
-      transition: background-color 0.25s ease;
-    }
+#right-panel {
+  right: 12px;
+}
 
-    .section:hover {
-      background: rgba(255, 255, 255, 0.35);
-    }
+#info-panel h1, #right-panel h1 {
+  margin-top: 0;
+  font-weight: 900;
+  font-size: 1.7rem;
+  color: #1a3e72;
+  border-bottom: 3px solid #2f65d6;
+  padding-bottom: 8px;
+  user-select: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
 
-    .label {
-      font-weight: 700;
-      color: #003366;
-      user-select: text;
-      text-shadow: 0 1px 1px rgba(255,255,255,0.7);
-    }
+.section {
+  background: #f4f8ff;
+  border-radius: 14px;
+  box-shadow: inset 0 0 8px rgba(47, 101, 214, 0.15);
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #344f8a;
+  user-select: text;
+  transition: background-color 0.25s ease;
+}
 
-    ul {
-      padding-left: 1.5em;
-      margin: 0;
-      max-height: 180px;
-      overflow-y: auto;
-      list-style-type: disc;
-      color: #222;
-    }
+.section:hover {
+  background: #dbe6fb;
+}
 
-    ul li {
-      margin-bottom: 10px;
-      font-weight: 600;
-      color: #222;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      user-select: text;
-      transition: color 0.2s ease;
-    }
+.label {
+  font-weight: 700;
+  color: #2f65d6;
+  user-select: text;
+  text-shadow: none;
+}
 
-    ul li:last-child {
-      margin-bottom: 0;
-    }
+ul {
+  padding-left: 1.5em;
+  margin: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  list-style-type: disc;
+  color: #2f65d6;
+}
 
-    ul li:hover {
-      color: #007bff;
-      cursor: default;
-    }
+ul li {
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #2f65d6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: text;
+  transition: color 0.2s ease;
+}
 
-    .traffic-low {
-      color: #28a745;
-      font-weight: 700;
-      text-shadow: 0 1px 1px rgba(255,255,255,0.8);
-    }
-    .traffic-medium {
-      color: #ffc107;
-      font-weight: 700;
-      text-shadow: 0 1px 1px rgba(255,255,255,0.8);
-    }
-    .traffic-high {
-      color: #dc3545;
-      font-weight: 700;
-      text-shadow: 0 1px 1px rgba(255,255,255,0.8);
-    }
-    .traffic-icon {
-      font-size: 1.4rem;
-      user-select: none;
-      text-shadow: 0 0 3px rgba(0,0,0,0.25);
-    }
+ul li:last-child {
+  margin-bottom: 0;
+}
 
-    #error-msg {
-      color: #dc3545;
-      font-weight: 700;
-      background: rgba(248, 215, 218, 0.8);
-      border-radius: 12px;
-      padding: 14px 18px;
-      box-shadow: 0 0 16px #dc3545cc;
-      user-select: text;
-      text-align: center;
-      font-size: 1.1rem;
-      border: 1.5px solid #dc3545cc;
-    }
 
-    .osrm-title {
+
+.traffic-low {
+  color: #28a745;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.traffic-medium {
+  color: #f0ad4e;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.traffic-high {
+  color: #d9534f;
+  font-weight: 700;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.traffic-icon {
+  font-size: 1.4rem;
+  user-select: none;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.15);
+}
+
+#error-msg {
+  color: #d9534f;
+  font-weight: 700;
+  background: rgba(217, 83, 79, 0.15);
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 0 16px #d9534fcc;
+  user-select: text;
+  text-align: center;
+  font-size: 1.1rem;
+  border: 1.5px solid #d9534fcc;
+}
+
+.osrm-title {
   font-weight: 800;
   font-size: 1.6rem;
-  color: #0056b3; /* koyu mavi */
-  border-bottom: 3px solid #007bff; /* alt çizgi */
+  color: #1a3e72;
+  border-bottom: 3px solid #2f65d6;
   padding-bottom: 6px;
   margin-bottom: 20px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   user-select: none;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
+</style>
 
-  </style>
+
+
 </head>
 <body>
  
- <form id="search-bar" action="{{ url_for('generate_route') }}" method="post" autocomplete="off">
+ <form id="search-bar" action="{{ url_for('generate_route') }}" method="post" autocomplete="on">
   <input type="text" name="start" placeholder="Başlangıç" required value="{{ start }}">
   <input type="text" name="end" placeholder="Bitiş" required value="{{ end }}">
   <button type="submit" title="Rota oluştur" aria-label="Rota oluştur">
-    <!-- Minimal rota ikonu (location/route icon) -->
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#0d47a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" >
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
       <circle cx="12" cy="9" r="2"/>
@@ -288,47 +277,32 @@
 
       <div class="section">
         <h2>📊 Rota Bilgileri</h2>
-        <div><span class="label">Toplam Mesafe:</span> {{ total_length_km }} km</div>
+        <div><span class="label">Toplam Mesafe:</span> {{ total_length_km }} m</div>
         <div><span class="label">Tahmini Süre:</span> {{ total_time_min }} dakika</div>
-        <div><span class="label">Ortalama Hız:</span> {{ average_speed }} km/h</div>
-        <div><span class="label">Ortalama Trafik Yoğunluğu:</span> {{ average_jam }}</div>
       </div>
 
       <div class="section">
-        <h2>🛣️ Trafik Durumu</h2>
+        <h2> Yol Tarifi Ve Trafik Durumu</h2>
         <ul>
           {% for road in road_info %}
             <li>
               <span>{{ road.name }}</span> - 
               {% if road.jam_factor >= 0.8 %}
-                <span class="traffic-icon" title="Yoğun Trafik">🚦</span>
+                <span class="traffic-icon" title="Yoğun Trafik"></span>
                 <span class="traffic-high">Yoğun</span>
               {% elif road.jam_factor >= 0.5 %}
-                <span class="traffic-icon" title="Orta Trafik">⚠️</span>
+                <span class="traffic-icon" title="Orta Trafik"></span>
                 <span class="traffic-medium">Orta</span>
               {% else %}
-                <span class="traffic-icon" title="Açık Trafik">✅</span>
+                <span class="traffic-icon" title="Açık Trafik"></span>
                 <span class="traffic-low">Açık</span>
               {% endif %}
-              (Hız: {{ road.speed }} km/h)
+            
             </li>
           {% endfor %}
         </ul>
       </div>
 
-     
-      {% if turn_by_turn %}
-        <div class="section">
-          <h2>🗺️ Adım Adım Rota</h2>
-          <ul>
-            {% for step in turn_by_turn if step.distance >= 10 %}
-              <li>
-                <span>{{ step.instruction }}</span> - <span>{{ (step.distance / 1000) | round(2) }} km</span>
-              </li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
 
     {% else %}
       <div>Henüz rota oluşturulmadı.</div>
@@ -345,13 +319,13 @@
     <h1 class="osrm-title">OSRM Rota Detayları</h1>
 
     <div class="section location-section">
-      <h2>📍 Konumlar</h2>
+      <h2>Konumlar</h2>
       <div><span class="label">Başlangıç:</span> {{ start_coords[0] }}, {{ start_coords[1] }}</div>
       <div><span class="label">Bitiş:</span> {{ end_coords[0] }}, {{ end_coords[1] }}</div>
     </div>
 
     <div class="section streets-section">
-      <h2>🛣️ Geçilecek Yol İsimleri</h2>
+      <h2>Yol Tarifi</h2>
       {% if street_names %}
         <ul>
           {% for name in street_names %}
@@ -364,7 +338,7 @@
     </div>
 
     <div class="section stats-section">
-      <h2>📊 OSRM Rota Bilgileri</h2>
+      <h2>OSRM Rota Bilgileri</h2>
       <ul>
         <li><strong>Toplam Mesafe:</strong> {{ (osrm_total_length_km * 1000) | round(0) }} m</li>
       </ul>
