@@ -54,7 +54,6 @@ def generate_route():
     folium.Marker([end_lat, end_lon], popup="Bitiş",
                   icon=folium.Icon(color='red', icon='stop', prefix='fa')).add_to(m)
 
-    
     initial_padding = 0.03
     initial_lat_min = min(start_lat, end_lat) - initial_padding
     initial_lat_max = max(start_lat, end_lat) + initial_padding
@@ -65,8 +64,8 @@ def generate_route():
     if initial_traffic_data is None:
         error = "Trafik verisi alınırken hata oluştu."
         return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
-                               start_coords=(round(start_lat,6), round(start_lon,6)),
-                               end_coords=(round(end_lat,6), round(end_lon,6)),
+                               start_coords=(round(start_lat, 6), round(start_lon, 6)),
+                               end_coords=(round(end_lat, 6), round(end_lon, 6)),
                                error=error)
 
     G = build_weighted_graph(initial_traffic_data, initial_lat_min, initial_lat_max, initial_lon_min, initial_lon_max)
@@ -76,39 +75,45 @@ def generate_route():
     if not start_node or not end_node:
         error = "Başlangıç veya bitiş noktasına yakın uygun yol bulunamadı."
         return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
-                               start_coords=(round(start_lat,6), round(start_lon,6)),
-                               end_coords=(round(end_lat,6), round(end_lon,6)),
+                               start_coords=(round(start_lat, 6), round(start_lon, 6)),
+                               end_coords=(round(end_lat, 6), round(end_lon, 6)),
                                error=error)
 
     route_coords = calculate_route(G, start_node, end_node)
     if route_coords is None:
         error = "Uygun rota bulunamadı."
         return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
-                               start_coords=(round(start_lat,6), round(start_lon,6)),
-                               end_coords=(round(end_lat,6), round(end_lon,6)),
+                               start_coords=(round(start_lat, 6), round(start_lon, 6)),
+                               end_coords=(round(end_lat, 6), round(end_lon, 6)),
                                error=error)
 
     folium.PolyLine(route_coords, color="#FFFFFF", weight=8, opacity=1, tooltip="AKILLI ROTA", sticky=True).add_to(m)
 
-    
-    route_lats = [coord[0] for coord in route_coords]
-    route_lons = [coord[1] for coord in route_coords]
-    padding = 0.005
-
-    lat_min = min(route_lats) - padding
-    lat_max = max(route_lats) + padding
-    lon_min = min(route_lons) - padding
-    lon_max = max(route_lons) + padding
-
-    folium.Rectangle(bounds=[[lat_min, lon_min], [lat_max, lon_max]],
-                     color='red', weight=3, fill=False).add_to(m)
-
-   
-    traffic_data = fetch_traffic_data(lat_min, lat_max, lon_min, lon_max)
-
-  
     heatmap_data = []
     road_info = []
+
+    osrm_route, osrm_directions, osrm_total_length_km, osrm_total_time_min, osrm_average_speed = get_osrm_route(
+        (start_lat, start_lon), (end_lat, end_lon))
+    street_names = []
+    if osrm_route:
+        folium.PolyLine(osrm_route, color="#800080", weight=8, opacity=1, tooltip="OSRM ROTA", sticky=True).add_to(m)
+        street_names = extract_street_names(osrm_directions)
+
+ 
+    all_lats = [coord[0] for coord in route_coords]
+    all_lons = [coord[1] for coord in route_coords]
+
+    if osrm_route:
+        all_lats.extend([coord[0] for coord in osrm_route])
+        all_lons.extend([coord[1] for coord in osrm_route])
+
+    
+    lat_min = min(all_lats) - 0.005
+    lat_max = max(all_lats) + 0.005
+    lon_min = min(all_lons) - 0.005
+    lon_max = max(all_lons) + 0.005
+
+    traffic_data = fetch_traffic_data(lat_min, lat_max, lon_min, lon_max)
 
     if traffic_data:
         for segment in traffic_data:
@@ -133,20 +138,28 @@ def generate_route():
                     if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
                         heatmap_data.append([lat, lon, jam_factor])
 
+
     if heatmap_data:
         HeatMap(heatmap_data, radius=25, blur=20, max_zoom=14).add_to(m)
+        all_lats.extend([pt[0] for pt in heatmap_data])
+        all_lons.extend([pt[1] for pt in heatmap_data])
 
+ 
+    lat_min = min(all_lats) - 0.005
+    lat_max = max(all_lats) + 0.005
+    lon_min = min(all_lons) - 0.005
+    lon_max = max(all_lons) + 0.005
+
+    folium.Rectangle(
+        bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+        color='red', weight=3, fill=False
+    ).add_to(m)
+
+    # Diğer veriler
     turn_by_turn = get_turn_by_turn(route_coords)
     total_length_m = sum(geodesic(route_coords[i], route_coords[i + 1]).meters for i in range(len(route_coords) - 1))
     average_speed_kmh = 30
     total_time_min = round((total_length_m / 1000) / average_speed_kmh * 60, 1)
-
-    osrm_route, osrm_directions, osrm_total_length_km, osrm_total_time_min, osrm_average_speed = get_osrm_route((start_lat, start_lon), (end_lat, end_lon))
-    street_names = []
-
-    if osrm_route:
-        folium.PolyLine(osrm_route, color="#800080", weight=8, opacity=1, tooltip="OSRM ROTA", sticky=True).add_to(m)
-        street_names = extract_street_names(osrm_directions)
 
     return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
                            start_coords=(round(start_lat, 6), round(start_lon, 6)),
