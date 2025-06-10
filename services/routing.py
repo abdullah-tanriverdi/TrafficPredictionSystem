@@ -3,6 +3,7 @@ from geopy.distance import geodesic
 import math
 import requests
 
+#ağırlıklı graphda dijikstra algoritması ile iki düğüm arasında ki en kısa rotayı hesaplama işlemi
 def calculate_route(G, start_node, end_node):
     try:
         path_nodes = nx.dijkstra_path(G, start_node, end_node, weight='weight')
@@ -19,41 +20,7 @@ def calculate_route(G, start_node, end_node):
     route_coords.append(path_nodes[-1])
     return route_coords
 
-def get_turn_by_turn(route_coords):
-    turn_by_turn = []
-    for i in range(1, len(route_coords) - 1):
-        prev = route_coords[i-1]
-        curr = route_coords[i]
-        nxt = route_coords[i+1]
-
-        v1 = (curr[0] - prev[0], curr[1] - prev[1])
-        v2 = (nxt[0] - curr[0], nxt[1] - curr[1])
-
-        angle = math.degrees(
-            math.atan2(v2[1], v2[0]) - math.atan2(v1[1], v1[0])
-        )
-        if angle < -180:
-            angle += 360
-        elif angle > 180:
-            angle -= 360
-
-        if angle > 30:
-            turn = "Sağa Dönüş"
-        elif angle < -30:
-            turn = "Sola Dönüş"
-        else:
-            turn = "Düz İlerle"
-
-        dist_m = geodesic(prev, curr).meters
-        turn_by_turn.append({
-            'instruction': turn,
-            'distance': round(dist_m, 1),
-            'location': curr
-        })
-    return turn_by_turn
-
-
-def get_osrm_route(start, end):
+def get_osrm_route(start, end, duration_factor=1.4): 
     url = f"http://router.project-osrm.org/route/v1/driving/{start[1]},{start[0]};{end[1]},{end[0]}"
     params = {
         "overview": "full",
@@ -72,7 +39,10 @@ def get_osrm_route(start, end):
 
     route_coords = [(lat, lon) for lon, lat in route_data["geometry"]["coordinates"]]
     total_distance_km = round(route_data["distance"] / 1000, 2)
-    total_duration_min = round(route_data["duration"] / 60, 1)
+    
+    
+    total_duration_min = round((route_data["duration"] * duration_factor) / 60, 1)
+    
     average_speed = round(total_distance_km / (total_duration_min / 60), 1) if total_duration_min > 0 else 0
 
     directions = []
@@ -92,6 +62,7 @@ def get_osrm_route(start, end):
             })
 
     return route_coords, directions, total_distance_km, total_duration_min, average_speed
+
 
 def extract_street_names(osrm_directions):
     street_names = []

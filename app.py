@@ -3,14 +3,19 @@ import folium
 from folium.plugins import HeatMap
 from services.geocoding import geocode
 from services.traffic import fetch_traffic_data, build_weighted_graph, find_nearest_node
-from services.routing import calculate_route, get_turn_by_turn, get_osrm_route
+from services.routing import calculate_route, get_osrm_route
 from geopy.distance import geodesic
 from services.routing import extract_street_names
 
+
 app = Flask(__name__)
 
+
+#ana sayfa başlatma
 @app.route('/')
 def index():
+
+    #başlangıç gösterimi
     m = folium.Map(location=[41.0603, 28.9870], zoom_start=14, tiles=None)
     folium.TileLayer(
         tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -20,9 +25,14 @@ def index():
         control=False
     ).add_to(m)
 
+
+    # indexi render etme durumu
     return render_template('index.html', map=m._repr_html_(), start='', end='', error=None,
                            start_coords=None, end_coords=None)
 
+
+
+# rota oluşturma sayfası
 @app.route('/render_route', methods=['POST'])
 def generate_route():
     start_input = request.form['start']
@@ -54,12 +64,16 @@ def generate_route():
     folium.Marker([end_lat, end_lon], popup="Bitiş",
                   icon=folium.Icon(color='red', icon='stop', prefix='fa')).add_to(m)
 
+
+    # trafik verisi bölgesi belirleme işlemi
     initial_padding = 0.03
     initial_lat_min = min(start_lat, end_lat) - initial_padding
     initial_lat_max = max(start_lat, end_lat) + initial_padding
     initial_lon_min = min(start_lon, end_lon) - initial_padding
     initial_lon_max = max(start_lon, end_lon) + initial_padding
 
+
+    #traffic verisini alma
     initial_traffic_data = fetch_traffic_data(initial_lat_min, initial_lat_max, initial_lon_min, initial_lon_max)
     if initial_traffic_data is None:
         error = "Trafik verisi alınırken hata oluştu."
@@ -68,6 +82,8 @@ def generate_route():
                                end_coords=(round(end_lat, 6), round(end_lon, 6)),
                                error=error)
 
+
+    #graph oluşturma
     G = build_weighted_graph(initial_traffic_data, initial_lat_min, initial_lat_max, initial_lon_min, initial_lon_max)
     start_node = find_nearest_node(G, (start_lat, start_lon))
     end_node = find_nearest_node(G, (end_lat, end_lon))
@@ -79,6 +95,8 @@ def generate_route():
                                end_coords=(round(end_lat, 6), round(end_lon, 6)),
                                error=error)
 
+
+    #akıllı rota hesaplama
     route_coords = calculate_route(G, start_node, end_node)
     if route_coords is None:
         error = "Uygun rota bulunamadı."
@@ -87,11 +105,13 @@ def generate_route():
                                end_coords=(round(end_lat, 6), round(end_lon, 6)),
                                error=error)
 
+    #akıllı rota çizme
     folium.PolyLine(route_coords, color="#FFFFFF", weight=8, opacity=1, tooltip="AKILLI ROTA", sticky=True).add_to(m)
 
     heatmap_data = []
     road_info = []
-
+    
+    #osrm rotası hesaplama ve çizme
     osrm_route, osrm_directions, osrm_total_length_km, osrm_total_time_min, osrm_average_speed = get_osrm_route(
         (start_lat, start_lon), (end_lat, end_lon))
     street_names = []
@@ -107,7 +127,7 @@ def generate_route():
         all_lats.extend([coord[0] for coord in osrm_route])
         all_lons.extend([coord[1] for coord in osrm_route])
 
-    
+    #ısı haritası
     lat_min = min(all_lats) - 0.005
     lat_max = max(all_lats) + 0.005
     lon_min = min(all_lons) - 0.005
@@ -122,7 +142,9 @@ def generate_route():
             current_flow = segment.get("currentFlow", {})
             jam_factor = current_flow.get("jamFactor", 0)
             speed = current_flow.get("speed", 0)
+  
 
+            #yol bilgilerini tabloya eklemek için info alma
             road_info.append({
                 "name": description,
                 "jam_factor": jam_factor,
@@ -156,17 +178,17 @@ def generate_route():
     ).add_to(m)
 
     # Diğer veriler
-    turn_by_turn = get_turn_by_turn(route_coords)
     total_length_m = sum(geodesic(route_coords[i], route_coords[i + 1]).meters for i in range(len(route_coords) - 1))
     average_speed_kmh = 30
     total_time_min = round((total_length_m / 1000) / average_speed_kmh * 60, 1)
 
+
+  #şablonu render etme
     return render_template('index.html', map=m._repr_html_(), start=start_input, end=end_input,
                            start_coords=(round(start_lat, 6), round(start_lon, 6)),
                            end_coords=(round(end_lat, 6), round(end_lon, 6)),
                            total_length_km=round(total_length_m),
                            total_time_min=total_time_min,
-                           turn_by_turn=turn_by_turn,
                            osrm_directions=osrm_directions,
                            osrm_total_length_km=osrm_total_length_km,
                            osrm_total_time_min=osrm_total_time_min,
