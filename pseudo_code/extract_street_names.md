@@ -1,3 +1,4 @@
+```pseudo
 FUNCTION extract_street_names (osrm_directions) RETURNS list of unique street names
 
 INITALIZE empty list street_names

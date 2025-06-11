@@ -1,3 +1,4 @@
+```pseudo
 FUNCTION fetch_traffic_data(lat_min, lat_max, lon_min, lon_max) RETURNS traffic_segments OR None
     FORMAT bbox string as "lon_min,lat_min,lon_max,lat_max"
 

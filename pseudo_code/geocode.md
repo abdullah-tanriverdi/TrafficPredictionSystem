@@ -1,3 +1,4 @@
+```pseudo
 FUNCTION geocode(input_str) RETURNS (latitude, longitude) OR (None, None)
     IF input_str contains ',' THEN
         PARSE lat, lon from input string

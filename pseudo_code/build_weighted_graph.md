@@ -1,3 +1,4 @@
+```pseudo
 FUNCTION build_weighted_graph(traffic_segments, lat_min, lat_max, lon_min, lon_max) RETURNS DirectedGraph G
 
     INITIALIZE directed graph G

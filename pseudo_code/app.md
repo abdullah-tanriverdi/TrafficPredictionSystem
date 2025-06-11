@@ -1,3 +1,4 @@
+```pseudo
 START Flask Application
 
 DEFINE route '/' AS index_page_handler

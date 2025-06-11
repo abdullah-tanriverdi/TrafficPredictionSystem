@@ -1,3 +1,4 @@
+```pseudo
 FUNCTION calculate_route(G, start_node, end_node) RETURNS route_coords OR None
 
     TRY

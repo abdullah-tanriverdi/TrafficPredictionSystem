@@ -1,3 +1,4 @@
+```pseudo
 FUNCTION get_osrm_route(start_coord, end_coord, duration_factor=1.4) RETURNS
     (route_coords, directions, total_distance_km, total_duration_min, average_speed)
 

@@ -1,3 +1,4 @@
+```pseudo
 FUNCTION find_nearest_node(G, target_point, max_distance=500 meters) RETURNS nearest_node OR None
     SET min_distance = infinity
     SET nearest_node = None
